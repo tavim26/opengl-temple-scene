@@ -28,9 +28,9 @@ namespace gps {
         void Draw(gps::Shader shader, glm::mat4 viewMatrix, glm::mat4 projectionMatrix);
         GLuint GetTextureId();
     private:
-        GLuint skyboxVAO;
-        GLuint skyboxVBO;
-        GLuint cubemapTexture;
+        GLuint skyboxVAO = 0;
+        GLuint skyboxVBO = 0;
+        GLuint cubemapTexture = 0;
         GLuint LoadSkyBoxTextures(std::vector<const GLchar*> cubeMapFaces);
         void InitSkyBox();
     };

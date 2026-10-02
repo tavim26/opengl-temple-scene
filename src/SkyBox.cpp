@@ -9,8 +9,16 @@ namespace gps {
 
     void SkyBox::Load(std::vector<const GLchar*> cubeMapFaces)
     {
+        if (cubemapTexture != 0)
+        {
+            glDeleteTextures(1, &cubemapTexture);
+        }
         cubemapTexture = LoadSkyBoxTextures(cubeMapFaces);
-        InitSkyBox();
+
+        if (skyboxVAO == 0)
+        {
+            InitSkyBox();
+        }
     }
 
     void SkyBox::Draw(gps::Shader shader, glm::mat4 viewMatrix, glm::mat4 projectionMatrix)
@@ -50,12 +58,15 @@ namespace gps {
             image = stbi_load(skyBoxFaces[i], &width, &height, &n, force_channels);
             if (!image) {
                 fprintf(stderr, "ERROR: could not load %s\n", skyBoxFaces[i]);
-                return false;
+                glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+                glDeleteTextures(1, &textureID);
+                return 0;
             }
             glTexImage2D(
                 GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0,
                 GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image
             );
+            stbi_image_free(image);
         }
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);

@@ -16,7 +16,7 @@ namespace gps {
 	// Draw each mesh from the model
 	void Model3D::Draw(gps::Shader shaderProgram) {
 
-		for (int i = 0; i < meshes.size(); i++)
+		for (size_t i = 0; i < meshes.size(); i++)
 			meshes[i].Draw(shaderProgram);
 	}
 
@@ -63,7 +63,7 @@ namespace gps {
 				//textures.push_back(currentTexture);
 
 				// Loop over vertices in the face.
-				for (size_t v = 0; v < fv; v++) {
+				for (int v = 0; v < fv; v++) {
 
 					// access to vertex
 					tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
@@ -153,7 +153,7 @@ namespace gps {
 	// Retrieves a texture associated with the object - by its name and type
 	gps::Texture Model3D::LoadTexture(std::string path, std::string type) {
 
-			for (int i = 0; i < loadedTextures.size(); i++) {
+			for (size_t i = 0; i < loadedTextures.size(); i++) {
 
 				if (loadedTextures[i].path == path)	{
 

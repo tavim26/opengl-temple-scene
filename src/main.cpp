@@ -1,4 +1,4 @@
-﻿#if defined (__APPLE__)
+﻿#if defined(__APPLE__)
 #define GLFW_INCLUDE_GLCOREARB
 #define GL_SILENCE_DEPRECATION
 #else
@@ -8,210 +8,103 @@
 
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/matrix_inverse.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+
+#include <cmath>
+#include <cstddef>
+#include <cstdlib>
 #include <iostream>
+#include <string>
+#include <vector>
 
-#include "Model3D.hpp"
-#include "SkyBox.hpp"
-#include "Shader.hpp"
 #include "Camera.hpp"
+#include "Model3D.hpp"
+#include "Shader.hpp"
+#include "SkyBox.hpp"
 
-// camera settings
-float cameraYaw = 0.0f;
-float cameraPitch = 0.0f;
-float mouseLastX = 0.0f;
-float mouseLastY = 0.0f;
-GLfloat cameraSpeed = 0.5f;
-GLboolean keyStates[1024];
-
-gps::Camera mainCamera(
-    glm::vec3(13.0f, 44.0f, -10.0f),   // cam poz
-    glm::vec3(0.0f, 0.0f, 1.0f),  // look direction
-    glm::vec3(0.0f, 1.0f, 0.0f));  // UP vector
-
-
-
-//models and shaders
-gps::Model3D mainSceneModel;
-gps::Shader basicShaderProgram;
-GLfloat modelRotationAngle = 0.0f;
-
-gps::Model3D carriage;
-glm::vec3 carriagePosition(0.0f, 0.0f, 0.0f); 
-
-
-
-// main window
-int windowWidth = 1920;
-int windowHeight = 1080;
-int framebufferWidth, framebufferHeight;
-GLFWwindow* mainWindow = NULL;
-
-// matrices
-glm::mat4 modelMatrix;
-glm::mat4 viewMatrix;
-glm::mat4 projectionMatrix;
-glm::mat3 normalMatrix;
-
-//lightning
-glm::vec3 directionalLightDir;  //sursa lumina directionala
-glm::vec3 directionalLightColor;
-
-GLint modelMatrixLoc;
-GLint viewMatrixLoc;
-GLint projectionMatrixLoc;
-GLint normalMatrixLoc;
-GLint lightDirLoc;
-GLint lightColorLoc;
-
-
-//spotlight settings
-glm::mat4 spotlightRotationMatrix;
-glm::vec3 spotlightPosition = glm::vec3(-10.0f, 2.0f, -1.0f);   //sursa de lumina spotlight
-GLfloat spotlightConstant = 1.0f;
-GLfloat spotlightLinear = 0.1f;
-GLfloat spotlightQuadratic = 0.1f;
-
-GLuint spotlightColorLoc;
-GLuint spotlightConstantLoc;
-GLuint spotlightLinearLoc;
-GLuint spotlightQuadraticLoc;
-GLuint spotlightPositionLoc;
-
-GLfloat spotlightCutoff = 10.0f;
-GLfloat spotlightOuterCutoff = 20.0f;
-
-
-//fog settings
-bool fogEnabled = false;
-GLfloat currentFogDensity = 0.0f;
-GLfloat previousFogDensity = 0.0f;
-glm::vec4 fogColor;
-GLuint fogDensityLoc;
-GLuint fogColorLoc;
-
-//skybox
-gps::SkyBox skyboxModel;
-gps::Shader skyboxShaderProgram;
-bool useSunsetSkybox = false;
-bool useNightSkybox = false;
-
-// animation
-bool cameraAnimationEnabled = false;
-
-bool nightColor = false;
-bool sunsetColor = false;
-
-GLfloat rotationAngle;
-
-
+enum class TimeOfDay { Day, Sunset, Night };
 
 struct RainParticle {
     glm::vec3 position;
     glm::vec3 velocity;
 };
 
+// window
+constexpr int windowWidth = 1920;
+constexpr int windowHeight = 1080;
+int framebufferWidth = 0;
+int framebufferHeight = 0;
+GLFWwindow* mainWindow = nullptr;
 
-std::vector<RainParticle> rainParticles;
+// input
+bool keyStates[GLFW_KEY_LAST + 1] = {};
+bool firstMouseEvent = true;
+double mouseLastX = 0.0;
+double mouseLastY = 0.0;
+constexpr float mouseSensitivity = 0.2f;
+
+// camera
+const glm::vec3 initialCameraPosition(13.0f, 44.0f, -10.0f);
+const glm::vec3 initialCameraTarget(0.0f, 0.0f, 1.0f);
+const glm::vec3 animationCameraPosition(5.0f, 60.0f, -10.0f);
+const glm::vec3 animationCameraTarget(0.0f, 0.0f, 0.0f);
+const glm::vec3 worldUp(0.0f, 1.0f, 0.0f);
+constexpr float cameraSpeed = 0.5f;
+
+gps::Camera mainCamera(initialCameraPosition, initialCameraTarget, worldUp);
+float cameraYaw = 0.0f;
+float cameraPitch = 0.0f;
+bool cameraAnimationEnabled = false;
+
+// scene
+gps::Model3D mainSceneModel;
+gps::Model3D carriage;
+glm::vec3 carriagePosition(0.0f);
+float rotationAngle = 0.0f;
+constexpr float rotationStep = 1.0f;
+constexpr float carriageStep = 0.4f;
+
+// shaders and skybox
+gps::Shader basicShaderProgram;
+gps::Shader skyboxShaderProgram;
 gps::Shader rainShaderProgram;
+gps::SkyBox skyboxModel;
+
+// matrices
+glm::mat4 viewMatrix;
+glm::mat4 projectionMatrix;
+
+GLint modelMatrixLoc = -1;
+GLint viewMatrixLoc = -1;
+GLint projectionMatrixLoc = -1;
+GLint normalMatrixLoc = -1;
+
+// lighting
+TimeOfDay timeOfDay = TimeOfDay::Day;
+const glm::vec3 directionalLightDir(0.0f, 1.0f, 1.0f);
+glm::mat4 spotlightRotationMatrix;
+const glm::vec3 spotlightPosition(-10.0f, 2.0f, -1.0f);
+constexpr float spotlightConstant = 1.0f;
+constexpr float spotlightLinear = 0.1f;
+constexpr float spotlightQuadratic = 0.1f;
+
+// fog
+bool fogEnabled = false;
+float currentFogDensity = 0.0f;
+float previousFogDensity = 0.0f;
+constexpr float fogDensityStep = 0.003f;
+constexpr float maxFogDensity = 1.0f;
+
+// rain
+constexpr std::size_t rainParticleCount = 500000;
+std::vector<RainParticle> rainParticles;
+GLuint rainVAO = 0;
+GLuint rainVBO = 0;
 bool rainEnabled = false;
-int numRainParticles = 10000000;
 
 
-GLuint rainVAO, rainVBO;
-
-
-
-
-void initRainParticles(int numParticles) 
-{
-    rainParticles.clear();
-    for (int i = 0; i < numParticles; i++) 
-    {
-
-        RainParticle particle;
-
-        particle.position = glm::vec3(
-            ((rand() % 1000) - 500) / 10.0f, 
-            ((rand() % 400) + 100) / 10.0f,  
-            ((rand() % 1000) - 500) / 10.0f  
-        );
-
-
-
-        particle.velocity = glm::vec3(0.0f, -1.0f, 0.0f);
-        rainParticles.push_back(particle);
-    }
-
-    // Actualizează bufferul
-    glBindBuffer(GL_ARRAY_BUFFER, rainVBO);
-    glBufferData(GL_ARRAY_BUFFER, numParticles * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
-}
-
-
-
-void updateRainParticles()
-{
-    for (auto& particle : rainParticles) 
-    {
-        particle.position += particle.velocity;
-
-       
-        if (particle.position.y < 0.0f) {
-            particle.position.y = ((rand() % 1000) + 100) / 10.0f; 
-            particle.position.x = ((rand() % 1000) - 500) / 10.0f; 
-            particle.position.z = ((rand() % 1000) - 500) / 10.0f; 
-        }
-
-    }
-}
-
-
-
-void initRainBuffers() 
-{
-    glGenVertexArrays(1, &rainVAO);
-    glGenBuffers(1, &rainVBO);
-
-    glBindVertexArray(rainVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, rainVBO);
-    glBufferData(GL_ARRAY_BUFFER, rainParticles.size() * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glBindVertexArray(0);
-}
-
-
-
-void renderRain() 
-{
-    rainShaderProgram.useShaderProgram();
-
-    
-    GLint viewLoc = glGetUniformLocation(rainShaderProgram.shaderProgram, "view");
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(viewMatrix));
-
-    GLint projectionLoc = glGetUniformLocation(rainShaderProgram.shaderProgram, "projection");
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
-
-    
-    glBindBuffer(GL_ARRAY_BUFFER, rainVBO);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, rainParticles.size() * sizeof(glm::vec3), &rainParticles[0].position);
-
-    
-    glBindVertexArray(rainVAO);
-    glDrawArrays(GL_POINTS, 0, rainParticles.size());
-    glBindVertexArray(0);
-}
-
-
-
-
-// OpenGL error checking
 GLenum glCheckError_(const char* file, int line)
 {
     GLenum errorCode;
@@ -220,542 +113,416 @@ GLenum glCheckError_(const char* file, int line)
         std::string error;
         switch (errorCode)
         {
-        case GL_INVALID_ENUM:
-            error = "INVALID_ENUM"; break;
-        case GL_INVALID_VALUE:
-            error = "INVALID_VALUE"; break;
-        case GL_INVALID_OPERATION:
-            error = "INVALID_OPERATION"; break;
-        case GL_OUT_OF_MEMORY:
-            error = "OUT_OF_MEMORY"; break;
-        case GL_INVALID_FRAMEBUFFER_OPERATION:
-            error = "INVALID_FRAMEBUFFER_OPERATION"; break;
+        case GL_INVALID_ENUM:                  error = "INVALID_ENUM"; break;
+        case GL_INVALID_VALUE:                 error = "INVALID_VALUE"; break;
+        case GL_INVALID_OPERATION:             error = "INVALID_OPERATION"; break;
+        case GL_OUT_OF_MEMORY:                 error = "OUT_OF_MEMORY"; break;
+        case GL_INVALID_FRAMEBUFFER_OPERATION: error = "INVALID_FRAMEBUFFER_OPERATION"; break;
+        default:                               error = "UNKNOWN_ERROR"; break;
         }
-
         std::cout << error << " | " << file << " (" << line << ")" << std::endl;
-
     }
     return errorCode;
 }
 #define glCheckError() glCheckError_(__FILE__, __LINE__)
 
 
+// ---------------------------------------------------------------
+// Camera
+// ---------------------------------------------------------------
 
-
-void initSkybox() 
+// Keeps yaw/pitch consistent with the camera, so the first mouse
+// movement continues from the current view instead of snapping.
+void setCamera(const glm::vec3& position, const glm::vec3& target)
 {
+    mainCamera = gps::Camera(position, target, worldUp);
+
+    const glm::vec3 front = glm::normalize(target - position);
+    cameraPitch = glm::degrees(std::asin(front.y));
+    cameraYaw = glm::degrees(std::atan2(front.z, front.x));
+}
+
+
+// ---------------------------------------------------------------
+// Rain
+// ---------------------------------------------------------------
+
+float randomTenths(int min, int max)
+{
+    return static_cast<float>(std::rand() % (max - min) + min) / 10.0f;
+}
+
+void respawnRainParticle(RainParticle& particle)
+{
+    particle.position = glm::vec3(randomTenths(-500, 500), randomTenths(100, 1100), randomTenths(-500, 500));
+}
+
+void initRain()
+{
+    rainParticles.resize(rainParticleCount);
+    for (RainParticle& particle : rainParticles)
+    {
+        particle.position = glm::vec3(randomTenths(-500, 500), randomTenths(100, 500), randomTenths(-500, 500));
+        particle.velocity = glm::vec3(0.0f, -1.0f, 0.0f);
+    }
+
+    glGenVertexArrays(1, &rainVAO);
+    glGenBuffers(1, &rainVBO);
+
+    glBindVertexArray(rainVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, rainVBO);
+    glBufferData(GL_ARRAY_BUFFER, rainParticles.size() * sizeof(RainParticle), nullptr, GL_DYNAMIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(RainParticle),
+                          reinterpret_cast<void*>(offsetof(RainParticle, position)));
+    glEnableVertexAttribArray(0);
+
+    glBindVertexArray(0);
+}
+
+void updateRain()
+{
+    for (RainParticle& particle : rainParticles)
+    {
+        particle.position += particle.velocity;
+        if (particle.position.y < 0.0f)
+        {
+            respawnRainParticle(particle);
+        }
+    }
+}
+
+void renderRain()
+{
+    rainShaderProgram.useShaderProgram();
+
+    glUniformMatrix4fv(glGetUniformLocation(rainShaderProgram.shaderProgram, "view"),
+                       1, GL_FALSE, glm::value_ptr(viewMatrix));
+    glUniformMatrix4fv(glGetUniformLocation(rainShaderProgram.shaderProgram, "projection"),
+                       1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
+    glBindBuffer(GL_ARRAY_BUFFER, rainVBO);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, rainParticles.size() * sizeof(RainParticle), rainParticles.data());
+
+    glBindVertexArray(rainVAO);
+    glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(rainParticles.size()));
+    glBindVertexArray(0);
+}
+
+
+// ---------------------------------------------------------------
+// Skybox, lighting and fog
+// ---------------------------------------------------------------
+
+void loadSkybox()
+{
+    std::string suffix;
+    switch (timeOfDay)
+    {
+    case TimeOfDay::Day:    suffix = "";         break;
+    case TimeOfDay::Sunset: suffix = "_sunset";  break;
+    case TimeOfDay::Night:  suffix = "_night";   break;
+    }
+
+    const std::vector<std::string> faceNames = { "negx", "posx", "posy", "negy", "negz", "posz" };
+
+    std::vector<std::string> facePaths;
+    for (const std::string& name : faceNames)
+    {
+        facePaths.push_back("skybox/" + name + suffix + ".jpg");
+    }
+
     std::vector<const GLchar*> faces;
-
-
-    if (!nightColor and !sunsetColor) 
+    for (const std::string& path : facePaths)
     {
-        faces.push_back("skybox/negx.jpg");
-        faces.push_back("skybox/posx.jpg");
-        faces.push_back("skybox/posy.jpg");
-        faces.push_back("skybox/negy.jpg");
-        faces.push_back("skybox/negz.jpg");
-        faces.push_back("skybox/posz.jpg");
+        faces.push_back(path.c_str());
     }
-    //night
-    else if (nightColor and !sunsetColor)
-    {
-        faces.push_back("skybox/negx_night.jpg");
-        faces.push_back("skybox/posx_night.jpg");
-        faces.push_back("skybox/posy_night.jpg");
-        faces.push_back("skybox/negy_night.jpg");
-        faces.push_back("skybox/negz_night.jpg");
-        faces.push_back("skybox/posz_night.jpg");
 
-    }
-    //sunset
-    else if (!nightColor and sunsetColor)
-    {
-        faces.push_back("skybox/negx_sunset.jpg");
-        faces.push_back("skybox/posx_sunset.jpg");
-        faces.push_back("skybox/posy_sunset.jpg");
-        faces.push_back("skybox/negy_sunset.jpg");
-        faces.push_back("skybox/negz_sunset.jpg");
-        faces.push_back("skybox/posz_sunset.jpg");
-    }
- 
     skyboxModel.Load(faces);
 }
 
+glm::vec3 directionalLightColor()
+{
+    switch (timeOfDay)
+    {
+    case TimeOfDay::Night:  return glm::vec3(0.1f, 0.1f, 0.1f);
+    case TimeOfDay::Sunset: return glm::vec3(1.0f, 0.459f, 0.1f);
+    default:                return glm::vec3(1.0f, 1.0f, 0.96f);
+    }
+}
 
+glm::vec4 fogColor()
+{
+    switch (timeOfDay)
+    {
+    case TimeOfDay::Night:  return glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    case TimeOfDay::Sunset: return glm::vec4(1.0f, 0.45f, 0.1f, 1.0f);
+    default:                return glm::vec4(1.0f, 1.0f, 0.8f, 1.0f);
+    }
+}
 
 glm::mat4 computeLightSpaceTrMatrix()
 {
-    glm::mat4 lightView = glm::lookAt(glm::inverseTranspose(glm::mat3(spotlightRotationMatrix)) * directionalLightDir, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    const GLfloat near_plane = -30.0f, far_plane = 30.0f;
-    glm::mat4 lightProjection = glm::ortho(-30.0f, 30.0f, -30.0f, 30.0f, near_plane, far_plane);
-    glm::mat4 lightSpaceTrMatrix = lightProjection * lightView;
+    const glm::mat4 lightView = glm::lookAt(
+        glm::inverseTranspose(glm::mat3(spotlightRotationMatrix)) * directionalLightDir,
+        glm::vec3(0.0f),
+        worldUp);
 
-    return lightSpaceTrMatrix;
+    const float nearPlane = -30.0f;
+    const float farPlane = 30.0f;
+    const glm::mat4 lightProjection = glm::ortho(-30.0f, 30.0f, -30.0f, 30.0f, nearPlane, farPlane);
+
+    return lightProjection * lightView;
 }
 
-
-void initModelMatrix() 
+GLint basicUniform(const char* name)
 {
-    modelMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(rotationAngle), glm::vec3(0.0f, 1.0f, 0.0f));
-    modelMatrixLoc = glGetUniformLocation(basicShaderProgram.shaderProgram, "model");
+    return glGetUniformLocation(basicShaderProgram.shaderProgram, name);
 }
 
-void initViewMatrix() 
+void uploadLightingUniforms()
 {
-    viewMatrix = mainCamera.getViewMatrix();
-    viewMatrixLoc = glGetUniformLocation(basicShaderProgram.shaderProgram, "view");
-    glUniformMatrix4fv(viewMatrixLoc, 1, GL_FALSE, glm::value_ptr(viewMatrix));
+    basicShaderProgram.useShaderProgram();
+    glUniform3fv(basicUniform("lightColor"), 1, glm::value_ptr(directionalLightColor()));
+    glUniform4fv(basicUniform("fogColor"), 1, glm::value_ptr(fogColor()));
 }
 
-void initNormalMatrix() 
+void uploadFogDensity()
 {
-    normalMatrix = glm::mat3(glm::inverseTranspose(viewMatrix * modelMatrix));
-    normalMatrixLoc = glGetUniformLocation(basicShaderProgram.shaderProgram, "normalMatrix");
+    basicShaderProgram.useShaderProgram();
+    glUniform1f(basicUniform("fogDensity"), currentFogDensity);
 }
 
-void initProjectionMatrix() 
+void initUniforms()
 {
-    projectionMatrix = glm::perspective(glm::radians(45.0f), (float)windowWidth / (float)windowHeight, 0.1f, 1000.0f);
-    projectionMatrixLoc = glGetUniformLocation(basicShaderProgram.shaderProgram, "projection");
+    basicShaderProgram.useShaderProgram();
+
+    modelMatrixLoc = basicUniform("model");
+    viewMatrixLoc = basicUniform("view");
+    projectionMatrixLoc = basicUniform("projection");
+    normalMatrixLoc = basicUniform("normalMatrix");
+
+    projectionMatrix = glm::perspective(glm::radians(45.0f),
+                                        static_cast<float>(windowWidth) / static_cast<float>(windowHeight),
+                                        0.1f, 1000.0f);
     glUniformMatrix4fv(projectionMatrixLoc, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
+    glUniform3fv(basicUniform("lightDir"), 1, glm::value_ptr(directionalLightDir));
+
+    glUniform1f(basicUniform("constant"), spotlightConstant);
+    glUniform1f(basicUniform("linear"), spotlightLinear);
+    glUniform1f(basicUniform("quadratic"), spotlightQuadratic);
+    glUniform3fv(basicUniform("position"), 1, glm::value_ptr(spotlightPosition));
+
+    glUniformMatrix4fv(basicUniform("lightSpaceTrMatrix"), 1, GL_FALSE,
+                       glm::value_ptr(computeLightSpaceTrMatrix()));
+
+    uploadLightingUniforms();
+    uploadFogDensity();
 }
 
-void initDirectionalLight() 
-{
-    directionalLightDir = glm::vec3(0.0f, 1.0f, 1.0f);
-    lightDirLoc = glGetUniformLocation(basicShaderProgram.shaderProgram, "lightDir");
-    glUniform3fv(lightDirLoc, 1, glm::value_ptr(directionalLightDir));
 
-    if (nightColor) 
+// ---------------------------------------------------------------
+// Settings changed from the keyboard
+// ---------------------------------------------------------------
+
+void setTimeOfDay(TimeOfDay newTimeOfDay)
+{
+    timeOfDay = newTimeOfDay;
+    loadSkybox();
+    uploadLightingUniforms();
+}
+
+void toggleTimeOfDay(TimeOfDay target)
+{
+    setTimeOfDay(timeOfDay == target ? TimeOfDay::Day : target);
+}
+
+void toggleFog()
+{
+    fogEnabled = !fogEnabled;
+
+    if (fogEnabled)
     {
-        directionalLightColor = glm::vec3(0.1f, 0.1f, 0.1f);
-    }
-    else if (sunsetColor)
-    {
-        directionalLightColor = glm::vec3(1.0f, 0.459f, 0.1f);
+        currentFogDensity = previousFogDensity;
     }
     else
     {
-        directionalLightColor = glm::vec3(1.0f, 1.0f, 0.96f);
+        previousFogDensity = currentFogDensity;
+        currentFogDensity = 0.0f;
     }
 
-    lightColorLoc = glGetUniformLocation(basicShaderProgram.shaderProgram, "lightColor");
-    glUniform3fv(lightColorLoc, 1, glm::value_ptr(directionalLightColor));
+    uploadFogDensity();
 }
 
-void initFog() 
+void changeFogDensity(float delta)
 {
-    fogDensityLoc = glGetUniformLocation(basicShaderProgram.shaderProgram, "fogDensity");
-    glUniform1f(fogDensityLoc, currentFogDensity);
-
-    if (nightColor) 
+    if (!fogEnabled)
     {
-        fogColor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        return;
     }
-    else if (sunsetColor)
+
+    currentFogDensity = glm::clamp(currentFogDensity + delta, 0.0f, maxFogDensity);
+    uploadFogDensity();
+}
+
+void toggleCameraAnimation()
+{
+    cameraAnimationEnabled = !cameraAnimationEnabled;
+
+    if (cameraAnimationEnabled)
     {
-        fogColor = glm::vec4(1.0f, 0.45f, 0.1f, 1.0f);
+        setCamera(animationCameraPosition, animationCameraTarget);
     }
-    else 
+}
+
+
+// ---------------------------------------------------------------
+// Input
+// ---------------------------------------------------------------
+
+void handleKeyPress(GLFWwindow* window, int key)
+{
+    switch (key)
     {
-        fogColor = glm::vec4(1.0f, 1.0f, 0.8f, 1.0f);
+    case GLFW_KEY_ESCAPE: glfwSetWindowShouldClose(window, GLFW_TRUE); break;
+
+    case GLFW_KEY_O: toggleTimeOfDay(TimeOfDay::Night);  break;
+    case GLFW_KEY_P: toggleTimeOfDay(TimeOfDay::Sunset); break;
+
+    case GLFW_KEY_Z: toggleFog(); break;
+    case GLFW_KEY_R: rainEnabled = !rainEnabled; break;
+    case GLFW_KEY_K: toggleCameraAnimation(); break;
+
+    case GLFW_KEY_1: glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);  break;
+    case GLFW_KEY_2: glPolygonMode(GL_FRONT_AND_BACK, GL_POINT); break;
+    case GLFW_KEY_3: glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);  break;
+
+    default: break;
+    }
+}
+
+void handleKeyHeld(int key)
+{
+    switch (key)
+    {
+    case GLFW_KEY_X: changeFogDensity(fogDensityStep);  break;
+    case GLFW_KEY_C: changeFogDensity(-fogDensityStep); break;
+    default: break;
+    }
+}
+
+void keyboardCallback(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/)
+{
+    if (key < 0 || key > GLFW_KEY_LAST)
+    {
+        return;
     }
 
-    fogColorLoc = glGetUniformLocation(basicShaderProgram.shaderProgram, "fogColor");
-    glUniform4fv(fogColorLoc, 1, glm::value_ptr(fogColor));
+    if (action == GLFW_PRESS)
+    {
+        keyStates[key] = true;
+        handleKeyPress(window, key);
+    }
+    else if (action == GLFW_RELEASE)
+    {
+        keyStates[key] = false;
+    }
+
+    if (action == GLFW_PRESS || action == GLFW_REPEAT)
+    {
+        handleKeyHeld(key);
+    }
 }
 
-void initSpotlight() 
+void mouseCallback(GLFWwindow* /*window*/, double xpos, double ypos)
 {
-    spotlightConstantLoc = glGetUniformLocation(basicShaderProgram.shaderProgram, "constant");
-    glUniform1f(spotlightConstantLoc, spotlightConstant);
+    if (firstMouseEvent)
+    {
+        mouseLastX = xpos;
+        mouseLastY = ypos;
+        firstMouseEvent = false;
+    }
 
-    spotlightLinearLoc = glGetUniformLocation(basicShaderProgram.shaderProgram, "linear");
-    glUniform1f(spotlightLinearLoc, spotlightLinear);
+    const double xOffset = xpos - mouseLastX;
+    const double yOffset = mouseLastY - ypos;
+    mouseLastX = xpos;
+    mouseLastY = ypos;
 
-    spotlightQuadraticLoc = glGetUniformLocation(basicShaderProgram.shaderProgram, "quadratic");
-    glUniform1f(spotlightQuadraticLoc, spotlightQuadratic);
+    if (cameraAnimationEnabled)
+    {
+        return;
+    }
 
-    spotlightPositionLoc = glGetUniformLocation(basicShaderProgram.shaderProgram, "position");
-    glUniform3fv(spotlightPositionLoc, 1, glm::value_ptr(spotlightPosition));
+    cameraYaw += static_cast<float>(xOffset) * mouseSensitivity;
+    cameraPitch = glm::clamp(cameraPitch + static_cast<float>(yOffset) * mouseSensitivity, -89.0f, 89.0f);
+
+    mainCamera.rotate(cameraPitch, cameraYaw);
 }
 
-void initLightSpaceMatrix() 
+void processMovement()
 {
-    glUniformMatrix4fv(glGetUniformLocation(basicShaderProgram.shaderProgram, "lightSpaceTrMatrix"),1,GL_FALSE,glm::value_ptr(computeLightSpaceTrMatrix()));
+    if (cameraAnimationEnabled)
+    {
+        rotationAngle += rotationStep;
+        return;
+    }
+
+    if (keyStates[GLFW_KEY_W]) mainCamera.move(gps::MOVE_FORWARD, cameraSpeed);
+    if (keyStates[GLFW_KEY_S]) mainCamera.move(gps::MOVE_BACKWARD, cameraSpeed);
+    if (keyStates[GLFW_KEY_A]) mainCamera.move(gps::MOVE_LEFT, cameraSpeed);
+    if (keyStates[GLFW_KEY_D]) mainCamera.move(gps::MOVE_RIGHT, cameraSpeed);
+
+    if (keyStates[GLFW_KEY_Q]) rotationAngle -= rotationStep;
+    if (keyStates[GLFW_KEY_E]) rotationAngle += rotationStep;
+
+    if (keyStates[GLFW_KEY_UP])    carriagePosition.x += carriageStep;
+    if (keyStates[GLFW_KEY_DOWN])  carriagePosition.x -= carriageStep;
+    if (keyStates[GLFW_KEY_LEFT])  carriagePosition.z += carriageStep;
+    if (keyStates[GLFW_KEY_RIGHT]) carriagePosition.z -= carriageStep;
 }
 
-void initUniforms() 
+
+// ---------------------------------------------------------------
+// Rendering
+// ---------------------------------------------------------------
+
+void drawModel(gps::Model3D& model, const glm::mat4& modelMatrix)
 {
-    basicShaderProgram.useShaderProgram();
+    const glm::mat3 normalMatrix = glm::mat3(glm::inverseTranspose(viewMatrix * modelMatrix));
 
-    initModelMatrix();
-    initViewMatrix();
-    initNormalMatrix();
-    initProjectionMatrix();
-    initDirectionalLight();
-    initFog();
-    initSpotlight();
-    initLightSpaceMatrix();
+    glUniformMatrix4fv(modelMatrixLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix));
+    glUniformMatrix3fv(normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
+
+    model.Draw(basicShaderProgram);
 }
-
-
-void updateViewAndNormalMatrix()
-{
-    viewMatrix = mainCamera.getViewMatrix();
-    basicShaderProgram.useShaderProgram();
-    glUniformMatrix4fv(viewMatrixLoc, 1, GL_FALSE, glm::value_ptr(viewMatrix));
-    normalMatrix = glm::mat3(glm::inverseTranspose(viewMatrix * modelMatrix));
-}
-
-void updateModelAndNormalMatrix()
-{
-    modelMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(rotationAngle), glm::vec3(0, 1, 0));
-    normalMatrix = glm::mat3(glm::inverseTranspose(viewMatrix * modelMatrix));
-}
-
-void updateCarriageNormalMatrix()
-{
-    glm::mat4 carriageModelMatrix = glm::translate(glm::mat4(1.0f), carriagePosition);
-    normalMatrix = glm::mat3(glm::inverseTranspose(viewMatrix * carriageModelMatrix));
-}
-
-
-void updateCarriageTransform() 
-{
-    glm::mat4 carriageModelMatrix = glm::mat4(1.0f);
-  
-    carriageModelMatrix = glm::rotate(carriageModelMatrix, glm::radians(rotationAngle), glm::vec3(0.0f, 1.0f, 0.0f));
-    
-    carriageModelMatrix = glm::translate(carriageModelMatrix, carriagePosition);
-    
-    glUniformMatrix4fv(modelMatrixLoc, 1, GL_FALSE, glm::value_ptr(carriageModelMatrix));
-    
-    normalMatrix = glm::mat3(glm::inverseTranspose(viewMatrix * carriageModelMatrix));
-}
-
-
-
-
-
 
 void renderScene()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    viewMatrix = mainCamera.getViewMatrix();
+
     skyboxModel.Draw(skyboxShaderProgram, viewMatrix, projectionMatrix);
 
     basicShaderProgram.useShaderProgram();
+    glUniformMatrix4fv(viewMatrixLoc, 1, GL_FALSE, glm::value_ptr(viewMatrix));
 
-    modelMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(rotationAngle), glm::vec3(0.0f, 1.0f, 0.0f));
-    glUniformMatrix4fv(modelMatrixLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix));
+    const glm::mat4 sceneMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(rotationAngle), worldUp);
+    drawModel(mainSceneModel, sceneMatrix);
+    drawModel(carriage, glm::translate(sceneMatrix, carriagePosition));
 
-    glUniformMatrix3fv(normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
-
-    mainSceneModel.Draw(basicShaderProgram);
-
-
-    updateCarriageTransform();
-    carriage.Draw(basicShaderProgram);
-
-    if (rainEnabled) {
+    if (rainEnabled)
+    {
         renderRain();
     }
-
-
-
-
 }
 
 
+// ---------------------------------------------------------------
+// Initialization
+// ---------------------------------------------------------------
 
-void processKeyInputs() 
-{
-
-
-    if (keyStates[GLFW_KEY_O])
-    {
-        nightColor = !nightColor;
-        sunsetColor = false;
-    }
-    if (keyStates[GLFW_KEY_P])
-    {
-        sunsetColor = !sunsetColor;
-        nightColor = false;
-    }
-
-   
-    // Fog controls
-    if (keyStates[GLFW_KEY_Z]) 
-    {
-
-        fogEnabled = !fogEnabled;
-
-        if (fogEnabled) 
-        {
-            currentFogDensity = previousFogDensity;
-        }
-        else 
-        {
-            previousFogDensity = currentFogDensity;
-            currentFogDensity = 0.0f;
-        }
-    }
-
-    if (keyStates[GLFW_KEY_X]) 
-    {
-
-        if (fogEnabled && currentFogDensity < 1.003f) 
-        {
-            currentFogDensity += 0.003f;
-        }
-    }
-
-    if (keyStates[GLFW_KEY_C]) 
-    {
-
-        if (fogEnabled && currentFogDensity > 0.003f) 
-        {
-            currentFogDensity -= 0.003;
-        }
-    }
-
-    //rain
-
-    if (keyStates[GLFW_KEY_R])
-    {
-        rainEnabled = !rainEnabled;
-    }
-   
-
-
-    // Camera animation
-    if (keyStates[GLFW_KEY_K]) 
-    {
-
-        cameraAnimationEnabled = !cameraAnimationEnabled;
-
-        if (cameraAnimationEnabled) 
-        {
-            gps::Camera animationCamera(
-                glm::vec3(5.0f, 60.0f, -10.0f),
-                glm::vec3(0.0f, 0.0f, 0.0f),
-                glm::vec3(0.0f, 1.0f, 0.0f));
-
-            mainCamera = animationCamera;
-            viewMatrix = mainCamera.getViewMatrix();
-
-            glUniformMatrix4fv(viewMatrixLoc, 1, GL_FALSE, glm::value_ptr(viewMatrix));
-            normalMatrix = glm::mat3(glm::inverseTranspose(viewMatrix * modelMatrix));
-
-           // updateCarriageTransform();
-        }
-    }
-
-
-    // Polygon rendering modes
-    if (keyStates[GLFW_KEY_1]) 
-    {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);  //mod wireframe
-    }
-
-    if (keyStates[GLFW_KEY_2]) 
-    {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_POINT); //mod cu puncte
-    }
-
-    if (keyStates[GLFW_KEY_3]) 
-    {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);  //mod solid (fill)
-    }
-}
-
-
-
-
-
-
-
-
-
-
-void processMovement() 
-{
-    if (!cameraAnimationEnabled) 
-    {
-        for (int key = 0; key < 1024; ++key) 
-        {
-            switch (key) 
-            {
-            case GLFW_KEY_W:
-
-                if (keyStates[key]) 
-                {
-                    mainCamera.move(gps::MOVE_FORWARD, cameraSpeed);
-                    updateViewAndNormalMatrix();
-                    updateCarriageNormalMatrix();
-                }
-                break;
-
-            case GLFW_KEY_S:
-
-                if (keyStates[key]) 
-                {
-                    mainCamera.move(gps::MOVE_BACKWARD, cameraSpeed);
-                    updateViewAndNormalMatrix();
-                    updateCarriageNormalMatrix();
-                }
-                break;
-
-            case GLFW_KEY_A:
-
-                if (keyStates[key]) 
-                {
-                    mainCamera.move(gps::MOVE_LEFT, cameraSpeed);
-                    updateViewAndNormalMatrix();
-                    updateCarriageNormalMatrix();
-                }
-                break;
-
-            case GLFW_KEY_D:
-                if (keyStates[key]) 
-                {
-                    mainCamera.move(gps::MOVE_RIGHT, cameraSpeed);
-                    updateViewAndNormalMatrix();
-                    
-                }
-                break;
-
-            case GLFW_KEY_Q:
-
-                if (keyStates[key]) 
-                {
-                    rotationAngle -= 1.0f;
-                    updateModelAndNormalMatrix();
-                    updateCarriageTransform();
-                   
-                }
-                break;
-
-            case GLFW_KEY_E:
-
-                if (keyStates[key]) 
-                {
-                    rotationAngle += 1.0f;
-                    updateModelAndNormalMatrix();
-                    updateCarriageTransform();
-                 
-                }
-                break;
-
-
-
-
-               
-            case GLFW_KEY_UP: 
-                if (keyStates[key])
-                {
-                    carriagePosition.x += 0.4f;
-                }
-                break;
-            case GLFW_KEY_DOWN: 
-                if (keyStates[key])
-                {
-                    carriagePosition.x -= 0.4f;
-                }
-                break;
-            case GLFW_KEY_LEFT: 
-                if (keyStates[key])
-                {
-                    carriagePosition.z += 0.4f;
-                }
-                break;
-            case GLFW_KEY_RIGHT: 
-                if (keyStates[key])
-                {
-                    carriagePosition.z -= 0.4f;
-                }
-                break;
-
-            default:
-                break;
-            }
-        }
-    }
-    else 
-    {
-        rotationAngle += 1.0f;
-        updateModelAndNormalMatrix();
-        updateCarriageTransform();
-    }
-}
-
-
-
-
-// Callback for keyboard
-void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int mode)
-{
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-    {
-        glfwSetWindowShouldClose(window, GL_TRUE);
-    }
-
-
-    if (key >= 0 && key < 1024)
-    {
-
-        if (action == GLFW_PRESS)
-        {
-            keyStates[key] = true;
-        }
-        else if (action == GLFW_RELEASE)
-        {
-            keyStates[key] = false;
-        }
-    }
-
-    processKeyInputs();
-}
-
-
-//Callback function for mouse
-void mouseCallback(GLFWwindow* window, double xpos, double ypos)
-{
-    if (!cameraAnimationEnabled) 
-    {
-        
-        double xOffset = xpos - mouseLastX;
-        double yOffset = mouseLastY - ypos;
-        mouseLastX = xpos;
-        mouseLastY = ypos;
-
-  
-        double mouseSensitivity = 0.2f;
-        xOffset *= mouseSensitivity;
-        yOffset *= mouseSensitivity;
-
-    
-        cameraYaw += xOffset;
-        cameraPitch += yOffset;
-
- 
-        if (cameraPitch > 89.0f)
-            cameraPitch = 89.0f;
-        if (cameraPitch < -89.0f)
-            cameraPitch = -89.0f;
-
-    
-        mainCamera.rotate(cameraPitch, cameraYaw);
-        viewMatrix = mainCamera.getViewMatrix();
-        glUniformMatrix4fv(viewMatrixLoc, 1, GL_FALSE, glm::value_ptr(viewMatrix));
-
-        
-        normalMatrix = glm::mat3(glm::inverseTranspose(viewMatrix * modelMatrix));
-    }
-}
-
-
-// Initialize OpenGL window
 bool initOpenGLWindow()
 {
     if (!glfwInit())
@@ -772,7 +539,7 @@ bool initOpenGLWindow()
     glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
     glfwWindowHint(GLFW_SAMPLES, 4);
 
-    mainWindow = glfwCreateWindow(windowWidth, windowHeight, "My Scene", NULL, NULL);
+    mainWindow = glfwCreateWindow(windowWidth, windowHeight, "OpenGL Temple Scene", nullptr, nullptr);
     if (!mainWindow)
     {
         std::cerr << "ERROR: could not open window with GLFW3\n";
@@ -787,21 +554,23 @@ bool initOpenGLWindow()
 
 #if !defined(__APPLE__)
     glewExperimental = GL_TRUE;
-    glewInit();
+    if (glewInit() != GLEW_OK)
+    {
+        std::cerr << "ERROR: could not initialize GLEW\n";
+        glfwDestroyWindow(mainWindow);
+        glfwTerminate();
+        return false;
+    }
 #endif
 
-    const GLubyte* renderer = glGetString(GL_RENDERER);
-    const GLubyte* version = glGetString(GL_VERSION);
-    std::cout << "Renderer: " << renderer << std::endl;
-    std::cout << "OpenGL version supported " << version << std::endl;
+    std::cout << "Renderer: " << glGetString(GL_RENDERER) << std::endl;
+    std::cout << "OpenGL version supported " << glGetString(GL_VERSION) << std::endl;
 
     glfwGetFramebufferSize(mainWindow, &framebufferWidth, &framebufferHeight);
 
     return true;
 }
 
-
-// Initialize OpenGL state
 void initOpenGLState()
 {
     glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
@@ -816,101 +585,61 @@ void initOpenGLState()
     glEnable(GL_FRAMEBUFFER_SRGB);
 }
 
-
-
-// Initialize scene objects
 void initObjects()
 {
     mainSceneModel.LoadModel("assets/scene.obj", "assets/");
-
     carriage.LoadModel("carriage/carriage.obj", "carriage/");
-
-
-    initRainParticles(1000000); 
-    initRainBuffers();
-
+    initRain();
 }
 
-// Initialize shaders
 void initShaders()
 {
     basicShaderProgram.loadShader("shaders/shaderStart.vert", "shaders/shaderStart.frag");
-    basicShaderProgram.useShaderProgram();
-
     skyboxShaderProgram.loadShader("shaders/skyboxShader.vert", "shaders/skyboxShader.frag");
-    skyboxShaderProgram.useShaderProgram();
-
     rainShaderProgram.loadShader("shaders/rain.vert", "shaders/rain.frag");
-    rainShaderProgram.useShaderProgram();
 }
 
-
-
-void cleanup() 
+void cleanup()
 {
+    glDeleteBuffers(1, &rainVBO);
+    glDeleteVertexArrays(1, &rainVAO);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glfwDestroyWindow(mainWindow);
     glfwTerminate();
 }
 
 
-void helper()
+int main()
 {
-    if (keyStates[GLFW_KEY_Z] || keyStates[GLFW_KEY_X] || keyStates[GLFW_KEY_C] || keyStates[GLFW_KEY_O] || keyStates[GLFW_KEY_P] || keyStates[GLFW_KEY_R])
+    if (!initOpenGLWindow())
     {
-
-        initUniforms();
-        initSkybox();
-        renderScene();
-    }
-}
-
-
-
-int main(int argc, const char* argv[]) 
-{
-
-    try {
-
-        initOpenGLWindow();
-    }
-    catch (const std::exception& e) {
-
-        std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
     }
 
+    setCamera(initialCameraPosition, initialCameraTarget);
+
     initOpenGLState();
     initObjects();
-    initSkybox();
+    loadSkybox();
     initShaders();
     initUniforms();
-    currentFogDensity = 0.0f;
-
-    glfwSetKeyCallback(mainWindow, keyboardCallback);
-    glfwSetCursorPosCallback(mainWindow, mouseCallback);
 
     glCheckError();
-    
+
     while (!glfwWindowShouldClose(mainWindow))
     {
         processMovement();
         renderScene();
 
-        helper();
-
-        if (rainEnabled) 
+        if (rainEnabled)
         {
-            updateRainParticles();
+            updateRain();
         }
-
 
         glfwPollEvents();
         glfwSwapBuffers(mainWindow);
-
     }
 
     cleanup();
-
+    return EXIT_SUCCESS;
 }
