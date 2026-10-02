@@ -235,16 +235,6 @@ main.cpp ──► Scene ──┬── Camera
 - **`Lighting`** manages the time of day and fog state and uploads the corresponding shader uniforms.
 - **`RainSystem`** stores the particles, updates them on the CPU and streams them to the GPU every frame.
 
-## Documentation
-
-The complete project documentation, written in Romanian, is available in
-[`docs/Documentatie_Proiect_OpenGL.pdf`](docs/Documentatie_Proiect_OpenGL.pdf).
-It covers the scene description, implementation details, data structures and the user manual.
-
-The source code was reorganized and refactored after the original submission
-(directory structure, CMake build, bug fixes and the split of `main.cpp` into components).
-The documentation describes the original version.
-
 ## License
 
 Distributed under the MIT License. See [`LICENSE`](LICENSE) for details.
