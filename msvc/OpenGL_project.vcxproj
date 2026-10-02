@@ -104,7 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\tavim\source\repos\OpenGL\OpenGL_Libs\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\src;$(ProjectDir)..\external;C:\Users\tavim\source\repos\OpenGL\OpenGL_Libs\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -121,7 +121,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\tavim\source\repos\OpenGL\OpenGL_Libs\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\src;$(ProjectDir)..\external;C:\Users\tavim\source\repos\OpenGL\OpenGL_Libs\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -133,75 +133,75 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Camera.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="Mesh.cpp" />
-    <ClCompile Include="Model3D.cpp" />
-    <ClCompile Include="Shader.cpp" />
-    <ClCompile Include="SkyBox.cpp" />
-    <ClCompile Include="stb_image.cpp" />
-    <ClCompile Include="tiny_obj_loader.cpp" />
+    <ClCompile Include="..\src\Camera.cpp" />
+    <ClCompile Include="..\src\main.cpp" />
+    <ClCompile Include="..\src\Mesh.cpp" />
+    <ClCompile Include="..\src\Model3D.cpp" />
+    <ClCompile Include="..\src\Shader.cpp" />
+    <ClCompile Include="..\src\SkyBox.cpp" />
+    <ClCompile Include="..\external\stb_image.cpp" />
+    <ClCompile Include="..\external\tiny_obj_loader.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Camera.hpp" />
-    <ClInclude Include="Mesh.hpp" />
-    <ClInclude Include="Model3D.hpp" />
-    <ClInclude Include="Shader.hpp" />
-    <ClInclude Include="SkyBox.hpp" />
-    <ClInclude Include="stb_image.h" />
-    <ClInclude Include="tiny_obj_loader.h" />
+    <ClInclude Include="..\src\Camera.hpp" />
+    <ClInclude Include="..\src\Mesh.hpp" />
+    <ClInclude Include="..\src\Model3D.hpp" />
+    <ClInclude Include="..\src\Shader.hpp" />
+    <ClInclude Include="..\src\SkyBox.hpp" />
+    <ClInclude Include="..\external\stb_image.h" />
+    <ClInclude Include="..\external\tiny_obj_loader.h" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="skybox\back.tga" />
-    <Image Include="skybox\bottom.tga" />
-    <Image Include="skybox\front.tga" />
-    <Image Include="skybox\hills2_bk.tga" />
-    <Image Include="skybox\hills2_dn.tga" />
-    <Image Include="skybox\hills2_ft.tga" />
-    <Image Include="skybox\hills2_lf.tga" />
-    <Image Include="skybox\hills2_rt.tga" />
-    <Image Include="skybox\hills2_up.tga" />
-    <Image Include="skybox\left.tga" />
-    <Image Include="skybox\negx.jpg" />
-    <Image Include="skybox\negx_night.jpg" />
-    <Image Include="skybox\negx_sunset.jpg" />
-    <Image Include="skybox\negy.jpg" />
-    <Image Include="skybox\negy_night.jpg" />
-    <Image Include="skybox\negy_sunset.jpg" />
-    <Image Include="skybox\negz.jpg" />
-    <Image Include="skybox\negz_night.jpg" />
-    <Image Include="skybox\negz_sunset.jpg" />
-    <Image Include="skybox\nightsky_bk.tga" />
-    <Image Include="skybox\nightsky_dn.tga" />
-    <Image Include="skybox\nightsky_ft.tga" />
-    <Image Include="skybox\nightsky_lf.tga" />
-    <Image Include="skybox\nightsky_rt.tga" />
-    <Image Include="skybox\nightsky_up.tga" />
-    <Image Include="skybox\posx.jpg" />
-    <Image Include="skybox\posx_night.jpg" />
-    <Image Include="skybox\posx_sunset.jpg" />
-    <Image Include="skybox\posy.jpg" />
-    <Image Include="skybox\posy_night.jpg" />
-    <Image Include="skybox\posy_sunset.jpg" />
-    <Image Include="skybox\posz.jpg" />
-    <Image Include="skybox\posz_night.jpg" />
-    <Image Include="skybox\posz_sunset.jpg" />
-    <Image Include="skybox\right.tga" />
-    <Image Include="skybox\sunset_bk.tga" />
-    <Image Include="skybox\sunset_dn.tga" />
-    <Image Include="skybox\sunset_ft.tga" />
-    <Image Include="skybox\sunset_lf.tga" />
-    <Image Include="skybox\sunset_rt.tga" />
-    <Image Include="skybox\sunset_up.tga" />
-    <Image Include="skybox\top.tga" />
+    <Image Include="..\skybox\back.tga" />
+    <Image Include="..\skybox\bottom.tga" />
+    <Image Include="..\skybox\front.tga" />
+    <Image Include="..\skybox\hills2_bk.tga" />
+    <Image Include="..\skybox\hills2_dn.tga" />
+    <Image Include="..\skybox\hills2_ft.tga" />
+    <Image Include="..\skybox\hills2_lf.tga" />
+    <Image Include="..\skybox\hills2_rt.tga" />
+    <Image Include="..\skybox\hills2_up.tga" />
+    <Image Include="..\skybox\left.tga" />
+    <Image Include="..\skybox\negx.jpg" />
+    <Image Include="..\skybox\negx_night.jpg" />
+    <Image Include="..\skybox\negx_sunset.jpg" />
+    <Image Include="..\skybox\negy.jpg" />
+    <Image Include="..\skybox\negy_night.jpg" />
+    <Image Include="..\skybox\negy_sunset.jpg" />
+    <Image Include="..\skybox\negz.jpg" />
+    <Image Include="..\skybox\negz_night.jpg" />
+    <Image Include="..\skybox\negz_sunset.jpg" />
+    <Image Include="..\skybox\nightsky_bk.tga" />
+    <Image Include="..\skybox\nightsky_dn.tga" />
+    <Image Include="..\skybox\nightsky_ft.tga" />
+    <Image Include="..\skybox\nightsky_lf.tga" />
+    <Image Include="..\skybox\nightsky_rt.tga" />
+    <Image Include="..\skybox\nightsky_up.tga" />
+    <Image Include="..\skybox\posx.jpg" />
+    <Image Include="..\skybox\posx_night.jpg" />
+    <Image Include="..\skybox\posx_sunset.jpg" />
+    <Image Include="..\skybox\posy.jpg" />
+    <Image Include="..\skybox\posy_night.jpg" />
+    <Image Include="..\skybox\posy_sunset.jpg" />
+    <Image Include="..\skybox\posz.jpg" />
+    <Image Include="..\skybox\posz_night.jpg" />
+    <Image Include="..\skybox\posz_sunset.jpg" />
+    <Image Include="..\skybox\right.tga" />
+    <Image Include="..\skybox\sunset_bk.tga" />
+    <Image Include="..\skybox\sunset_dn.tga" />
+    <Image Include="..\skybox\sunset_ft.tga" />
+    <Image Include="..\skybox\sunset_lf.tga" />
+    <Image Include="..\skybox\sunset_rt.tga" />
+    <Image Include="..\skybox\sunset_up.tga" />
+    <Image Include="..\skybox\top.tga" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\rain.frag" />
-    <None Include="shaders\rain.vert" />
-    <None Include="shaders\shaderStart.frag" />
-    <None Include="shaders\shaderStart.vert" />
-    <None Include="shaders\skyboxShader.frag" />
-    <None Include="shaders\skyboxShader.vert" />
+    <None Include="..\shaders\rain.frag" />
+    <None Include="..\shaders\rain.vert" />
+    <None Include="..\shaders\shaderStart.frag" />
+    <None Include="..\shaders\shaderStart.vert" />
+    <None Include="..\shaders\skyboxShader.frag" />
+    <None Include="..\shaders\skyboxShader.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
