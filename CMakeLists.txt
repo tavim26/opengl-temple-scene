@@ -44,6 +44,9 @@ endif()
 # ---------------------------------------------------------------
 set(SOURCES
     src/main.cpp
+    src/Scene.cpp
+    src/Lighting.cpp
+    src/RainSystem.cpp
     src/Camera.cpp
     src/Mesh.cpp
     src/Model3D.cpp
@@ -54,6 +57,10 @@ set(SOURCES
 )
 
 set(HEADERS
+    src/Scene.hpp
+    src/Lighting.hpp
+    src/RainSystem.hpp
+    src/GLUtils.hpp
     src/Camera.hpp
     src/Mesh.hpp
     src/Model3D.hpp
